@@ -1,4 +1,4 @@
-using NLPModels
+using NLPModels, Krylov
 function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 1000, max_time = 60)
     exit_flag = 0
     x0 = nlp.meta.x0
@@ -6,6 +6,7 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
     J(x) = jac(nlp, x)
+    j = 0
     μ = 1.0
 
     x = copy(x0) # Cópia de x0
@@ -18,17 +19,16 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     cx = c(x)
     A = J(x)
     m = length(cx)
-    u = ones(m) π
+    u = ones(m)
     λ = u-(cx/μ)
-    L_xλ = ∇fx - full(A')*λ
-    H_Φ(x,λ) = hess(nlp, x; obj_weight=1.0, y=λ)
-    Φ(x,u,μ) = f(x) - dot(u,cx) + (1/2*μ)*(norm(cx, 2))^2
+    L_xλ = ∇fx - A'*λ
+    H_Φ(x,λ) = hess(nlp, x;y=λ)
+    Φ(x,u,μ) = f(x) - dot(u,cx) + (0.5/μ)*(norm(cx, 2))^2
 
     while norm(L_xλ) > tol || norm(cx) > tol
-        #println("cx=$cx, L_xλ=$(norm(L_xλ))")
 
-        B = full(H_Φ(x,λ)) + (1/μ)*full(A')*full(A)
-        d = -B\L_xλ
+        B = H_Φ(x,λ) + (1/μ)*(A'A)
+        d,stats = cg(B,-L_xλ)
         ∇fx_dot_d = dot(L_xλ,d)
 
         t = 1.0
@@ -45,15 +45,13 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
         A = J(x)
         cx = c(x)
         λ = u-(cx/μ)
-        L_xλ = ∇fx - full(A')*λ
-
-        if norm(cx, 2) <= tol
+        L_xλ = ∇fx - A'*λ
+        η = μ^(0.1+0.9*j)
+        if norm(cx, 2) <= η
             u = λ
         else
-            μ = min(0.1,sqrt(μ))*μ
-            if μ>=tol
-                μ = 1.0
-            end
+            μ = max(min(0.1,sqrt(μ))*μ,1.0)
+            j+=1
         end
 
         iter = iter + 1
