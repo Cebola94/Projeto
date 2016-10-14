@@ -1,5 +1,5 @@
 using Krylov, CUTEst, LinearOperators, NLPModels
-function penalty_method(nlp::AbstractNLPModel; α = 0.5, mem = 5, tol = 1e-5, max_iter = 1000, max_time = 60)
+function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 1000, max_time = 60)
 
     exit_flag = 0
     x0 = nlp.meta.x0
@@ -8,7 +8,7 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, mem = 5, tol = 1e-5, ma
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
     J(x) = jac(nlp, x)
-    μ = 0.1
+    μ = 1.0
     j = 0
 
     x = copy(x0) # Cópia de x0
@@ -28,44 +28,38 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, mem = 5, tol = 1e-5, ma
     B = LBFGSOperator(n)
     M = hess(nlp, x, y = λ) + (1 / μ) * (A' * A)
 
-    while norm(L_xλ) > tol || norm(cx) > tol
-
+    while norm(∇fx - A' * u) > tol || norm(cx) > tol
+        d,stats = cg(M, -L_xλ)
+        t = 1.0
+        #println("Φ=$(Φ(x + t * d,u,μ))")
+        while Φ(x + t * d,u,μ) > Φ(x,u,μ) + α*t*dot(L_xλ,d)
+            t = t*0.9
+            if t <= tol
+                break
+            end
+        end
         ϵ_j = μ^(j + 1)
         while norm(L_xλ) > ϵ_j
-
-            d,stats = cg(M, -L_xλ)
-            ∇fx_dot_d = dot(L_xλ,d)
-            t = 1.0
-            while Φ(x + t*d,u,μ) > Φ(x,u,μ) + α*t*∇fx_dot_d
-                t = t*0.9
-                if t >= tol
-                    break
-                end
-            end
-
             s = t * d
             x = x + s
             y = ∇f(x) - ∇fx
             A = J(x)
-            B = push!(B, s, y)
-            M = B + (1 / μ) * (A'*A)
+            M = push!(B, s, y) + (1 / μ) * (A'*A)
             fx = f(x)
             ∇fx = ∇f(x)
             cx = c(x)
             λ = u - (cx / μ)
             L_xλ = ∇fx - A' * λ
-            η = μ^(0.1 + 0.9 * j)
             ϵ_j = μ^(j + 1)
-
+            η = μ^(0.1 + 0.9 * j)
             if norm(cx) <= η
                 u = λ
+                j += 1
             else
                 μ = max(min(0.1, sqrt(μ)) * μ,1e-8)
-                j+=1
+                j = 0
             end
-
         end
-        #println("μ=$μ")
 
         iter = iter + 1
         if iter >= max_iter
