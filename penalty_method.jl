@@ -8,8 +8,8 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
     J(x) = jac(nlp, x)
-
-    μ = 8.0
+    
+    μ = 10.0
     j = 0
 
     x = copy(x0) # Cópia de x0
@@ -26,23 +26,16 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     u = ones(m)
     λ = u - (cx / μ)
     L_xλ = ∇fx - A' * λ
+    L_x = ∇fx - A' * u
     Φ(x,u,µ) = f(x) - dot(u,c(x)) + (0.5 / μ) * (norm(c(x), 2))^2
     B = LBFGSOperator(n)
     M = hess(nlp, x, y = λ) + (1 / μ) * (A' * A)
     ϵ_j = μ^(j + 1)
     η = μ^(0.1 + 0.9 * j)
-
-    while norm(L_xλ) > tol
-        if cx == []
-            if norm(L_xλ) <= tol
-                break
-            end
-        else
-            if norm(cx) <= tol
-                break
-            end
-        end
-        if norm(L_xλ) > ϵ_j
+    
+    while norm(L_x) > tol || norm(cx) > tol
+        
+        while norm(L_xλ) > ϵ_j
 
              d,stats = cg(M, -L_xλ)
              L_xλ_d = dot(L_xλ,d)
@@ -61,21 +54,15 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
              fx = f(x)
              ∇fx = ∇f(x)
              cx = c(x)
-             λ += u - (cx / μ)
+             λ = u - (cx / μ)
              L_xλ = ∇fx - A' * λ
+             L_x = ∇fx - A' * u
          end
+         
          ϵ_j = μ^(j + 1)
          η = μ^(0.1 + 0.9 * j)
-
-         if cx == []
-              if (norm(∇fx)) <= η
-                 u = λ
-                 j += 1
-              else
-                 μ = max(min(0.1, μ^2), 1e-25)
-                 j = 0
-              end
-         elseif norm(cx) <= η
+        
+         if norm(cx) <= η
               u = λ
               j += 1
          else
@@ -93,5 +80,5 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
              break
          end
     end
-    return x, fx, cx, norm(∇fx), exit_flag, iter, elapsed_time
-end 
+    return x, fx, norm(cx), norm(L_x), exit_flag, iter, elapsed_time
+end
