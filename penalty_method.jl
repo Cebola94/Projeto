@@ -1,4 +1,24 @@
 using Krylov, CUTEst, LinearOperators, NLPModels
+
+function SOC(Φ, x, d, L_xλ, A, u, c, μ)
+    η1,η2 = 0.2,0.5
+    t = 1.0
+    cond = true
+    while cond == true
+        d1,stats = cg((A * A'),c(x + d))
+        d1 = -A' * d1
+        if Φ(x + d + d1,u,μ) <= Φ(x, u, μ) + 0.5 * t * dot(L_xλ, d)
+            d = d + d1
+            x = x + d
+            cond = false
+        else
+            t = t * 0.9
+        end
+
+    end
+    return x, d
+end
+
 function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 1000, max_time = 60, verbose = false)
 
     exit_flag = 0
