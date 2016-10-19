@@ -8,11 +8,7 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
     J(x) = jac(nlp, x)
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 724d990486943c309c10a53814bf1bd0ebacbe90
     μ = 10.0
     j = 0
 
@@ -35,7 +31,6 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     M = hess(nlp, x, y = λ) + (1 / μ) * (A' * A)
     ϵ_j = μ^(j + 1)
     η = μ^(0.1 + 0.9 * j)
-<<<<<<< HEAD
 
     while norm(L_x) > tol || norm(cx) > tol
 
@@ -97,56 +92,6 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
             break
         end
     end
-    return x, f(x), norm(cx), norm(L_x), exit_flag, iter, elapsed_time
-=======
-    
-    while norm(L_x) > tol || norm(cx) > tol
-        
-        while norm(L_xλ) > ϵ_j
-
-             d,stats = cg(M, -L_xλ)
-             L_xλ_d = dot(L_xλ,d)
-             t = 1.0
-             while Φ(x + t * d,u,μ) > Φ(x,u,μ) + α*t*L_xλ_d
-                 t = t*0.9
-                 if t <= tol
-                    break
-                 end
-             end
-             s = t * d
-             x = x + s
-             y = ∇f(x) - ∇fx
-             A = J(x)
-             M = push!(B, s, y) + (1 / μ) * (A' * A)
-             fx = f(x)
-             ∇fx = ∇f(x)
-             cx = c(x)
-             λ = u - (cx / μ)
-             L_xλ = ∇fx - A' * λ
-             L_x = ∇fx - A' * u
-         end
-         
-         ϵ_j = μ^(j + 1)
-         η = μ^(0.1 + 0.9 * j)
-        
-         if norm(cx) <= η
-              u = λ
-              j += 1
-         else
-              μ = max(min(0.1, μ^2), 1e-25)
-              j = 0
-         end
-         iter = iter + 1
-         if iter >= max_iter
-             exit_flag = 1
-             break
-         end
-         elapsed_time = time() - start_time
-         if elapsed_time >= max_time
-             exit_flag = 2
-             break
-         end
-    end
-    return x, fx, norm(cx), norm(L_x), exit_flag, iter, elapsed_time
->>>>>>> 724d990486943c309c10a53814bf1bd0ebacbe90
+    return x, f(x), norm(L_x),
+    norm(cx), exit_flag, iter, elapsed_time
 end
