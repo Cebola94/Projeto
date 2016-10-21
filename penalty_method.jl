@@ -14,9 +14,12 @@ function SOC(Φ, x, d, L_xλ, A, u, c, μ)
         else
             t = t * 0.9
         end
+<<<<<<< HEAD
         if t <= 1e-16
             break
         end
+=======
+>>>>>>> 1f9052f77b56f4e5553fb6975c7e863f2d8a67ff
 
     end
     return x, d
