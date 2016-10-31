@@ -3,7 +3,6 @@ using Krylov, CUTEst, LinearOperators, NLPModels
 function SOC(Φ, x, d, L_xλ, A, u, c, μ)
     η1,η2 = 1e-10,0.9
     t = 1.0
-    L_xλ_d = dot(L_xλ, d)
     Φ_x = Φ(x, u, μ)
     cond = true
     while cond == true
@@ -34,79 +33,76 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     f(x) = obj(nlp, x)
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
-    J(x) = jac(nlp, x)
+    J(x) = jac_op(nlp, x)
     
-    μ = 10.0
+    µ = 10.0
     j = 0
     
     iter = 0
     start_time = time()
     elapsed_time = 0.0
-
+    
     fx = f(x)
     ∇fx = ∇f(x)
     cx = c(x)
     A = J(x)
-
+    
     m = length(cx)
     u = ones(m)
-    λ = u - (cx / μ)
+    λ = u - (cx / µ)
     L_xλ = ∇fx - A' * λ
     L_x = ∇fx - A' * u
-    Φ(x,u,µ) = f(x) - dot(u,cx) + (0.5 / μ) * (norm(cx, 2))^2
-    B = LBFGSOperator(nlp.meta.nvar)
-    M = B + (1 / μ) * (A' * A)
-    ϵ_j = μ^(j + 1)
-    η = μ^(0.1 + 0.9 * j)
-    
-    if verbose
-        @printf("%4s  %9s  %9s  %9s\n", "λ", "μ", "iter", "fx")
-    end
-    
-    while norm(L_x) > tol || norm(cx) > tol
 
-        while norm(L_xλ) > ϵ_j         
+    ϕ(x,u,µ) = f(x) - dot(u,cx) + (0.5 / µ) * (norm(cx, 2))^2
+    B = LBFGSOperator(nlp.meta.nvar)
+    M = B + (1 / µ) * (A' * A)
+    ϵ_j = µ^(j + 1)
+    η = µ^(0.1 + 0.9 * j)
+
+    if verbose
+        @printf("%4s  %9s  %9s  %9s\n", "λ", "µ", "iter", "fx")
+    end
+   
+    while norm(L_x) > tol || norm(cx) > tol
+ 
+        while norm(L_xλ) > ϵ_j        
             d,_ = cg(M, -L_xλ)
-            t = 1.0           
-            x = SOC(Φ, x, d, L_xλ, A, u, c, μ)
+            L_xλ_d = dot(L_xλ, d)
+            if L_xλ_d >= 0
+                exit_flag = -1
+                return x, f(x), norm(L_x),norm(cx), exit_flag, iter, elapsed_time
+            end        
+            x = SOC(F, x, d, L_xλ_d, A, u, c, µ)
             A = J(x)
             cx = c(x)
             ∇fx_ant = ∇fx
             ∇fx = ∇f(x)
             y = ∇fx - ∇fx_ant
-            λ = u - (cx / μ)
+            λ = u - (cx / µ)
             L_xλ = ∇fx - A' * λ
             L_x = ∇fx - A' * u
-            M = push!(B, d, y) + (1 / μ) * (A' * A)
-        end
-
-        if norm(L_xλ) <= ϵ_j
-            ϵ_j = ϵ_j * 0.1
-        else
-            ϵ_j = μ^(j + 1)  
-        end
-        
-        η = μ^(0.1 + 0.9 * j)
-        if η >= 1e2
-            μ = max(min(0.1, sqrt(μ))*μ, 1e-25)
-            j = 0
-        end
-        if nlp.meta.ncon == 0
-            if norm(cx) <= η
+            M = push!(B, d, y) + (1 / µ) * (A' * A)
+            
+            if η >= 1e2
+                µ = max(min(0.1, sqrt(µ))*µ, 1e-25)
+                j = 0
+            end
+            if norm(cx) <= η            
                 u = λ
                 j += 1
             else
-                μ = max(min(0.1, sqrt(μ))*μ, 1e-25)
+                µ = max(min(0.1, sqrt(µ))*µ, 1e-25)
                 j = 0
             end
-        elseif norm(cx) <= η
-            u = λ
-            j += 1
-        else
-            μ = max(min(0.1, sqrt(μ))*μ, 1e-25)
-            j = 0
+            η = µ^(0.1 + 0.9 * j)
         end
-        iter = iter + 1
+
+        if norm(L_xλ) <= ϵ_j
+            ϵ_j *= 0.1
+        else
+            ϵ_j = µ^(j + 1) 
+        end
+        iter += 1
         if iter >= max_iter
             exit_flag = 1
             break
@@ -116,9 +112,11 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
             exit_flag = 2
             break
         end
-        
-        verbose && @printf("%4s  %9s  %9s  %9s\n", λ, μ, iter, f(x))
-        
+
+        verbose && @printf("%4s  %9s  %9s  %9s\n", λ, µ, iter, f(x))
+
     end
-    return x, f(x), norm(L_x),norm(cx), exit_flag, iter, elapsed_time
+
+return x, f(x), norm(L_x),norm(cx), exit_flag, iter, elapsed_time
+
 end
