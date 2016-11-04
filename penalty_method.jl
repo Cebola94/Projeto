@@ -33,28 +33,39 @@ function SOC(Φ, x, d, L_xλ_d, A, u, c, μ)
     return x, d
 end
 
+<<<<<<< HEAD
 function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 1000, max_time = 60, verbose = false)
 
     k_max = 30
+=======
+function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 50, max_time = 60, verbose = false)
+    
+    k_max = 10
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
     exit_flag = 0
     x = nlp.meta.x0
     f(x) = obj(nlp, x)
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
+<<<<<<< HEAD
     J(x) = jac(nlp, x)
 
+=======
+    J(x) = jac_op(nlp, x)
+    
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
     µ = 0.99
     j = 0
 
     iter = 0
     start_time = time()
     elapsed_time = 0.0
-
+    
     fx = f(x)
     ∇fx = ∇f(x)
     cx = c(x)
     A = J(x)
-
+    
     m = length(cx)
     u = ones(m)
     λ = u - (cx / µ)
@@ -70,6 +81,7 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
     if verbose
         @printf("%4s  %9s  %9s  %9s  %9s  %9s  %9s  %9s\n", "iter","u","||c(x)||","µ","η","fx", "||L_x||", "||L_xλ||")
     end
+<<<<<<< HEAD
 
     while norm(L_x) > tol || norm(cx) > tol
         k = 0
@@ -77,6 +89,19 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
             d,_ = cg(M, -L_xλ)
             L_xλ_d = dot(L_xλ, d)
             t = 1.0
+=======
+   
+    while norm(L_x) > tol || norm(cx) > tol
+        k = 0
+        while norm(L_xλ,2) > ϵ_j        
+            d,_ = cg(M, -L_xλ)
+            L_xλ_d = dot(L_xλ, d)
+            t = 1.0
+            if L_xλ_d >= 0
+                exit_flag = -1
+                return x, f(x), norm(L_x),norm(cx), exit_flag, iter, elapsed_time
+            end  
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
             x, s = SOC(ϕ, x, d, L_xλ_d, A, u, c, µ)
             A = J(x)
             cx = c(x)
@@ -91,19 +116,31 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
             if k >= k_max
                 break
             end
+<<<<<<< HEAD
 
         end
 
+=======
+            
+        end 
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
         if k >= k_max
             exit_flag = -2
             break
         end
+<<<<<<< HEAD
 
+=======
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
         if η >= 1e2
             µ = max(min(0.1, sqrt(µ)) * µ, 1e-25)
             j = 0
         end
+<<<<<<< HEAD
         if norm(cx) <= η
+=======
+        if norm(cx) <= η            
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
             u = λ
             j += 1
         else
@@ -112,7 +149,11 @@ function penalty_method(nlp::AbstractNLPModel; α = 0.5, tol = 1e-5, max_iter = 
         end
         η = µ^(0.1 + 0.9 * j)
         ϵ_j = µ^(j + 1)*1e5
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 66b3567352c2bf52f129626cb4f5dadb745003e0
         iter += 1
         if iter >= max_iter
             exit_flag = 1
