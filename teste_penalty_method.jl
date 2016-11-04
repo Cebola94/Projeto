@@ -1,174 +1,143 @@
-using FactCheck, NLPModels, CUTEst, LinearOperators
+using FactCheck, NLPModels, CUTEst, LinearOperators, Krylov
 
 include("penalty_method.jl")
-include("metodo_filtro.jl")
 
 context("Método Penalidade") do
-  context("Testes sem restrições") do
-    facts("Rosenbrock") do
-        nlp = CUTEstModel("ROSENBR")
-        x,fx,cx,gx = penalty_method(nlp)
-        cutest_finalize(nlp)
-        @fact x --> roughly(ones(2), 1e-3)
+  context("Problemas pequenos") do
+    facts("HS6") do
+        nlp = CUTEstModel("HS6")
+        x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
+        @fact x --> roughly(ones(nlp.meta.nvar), 1e-3)
         @fact fx --> roughly(0.0, 1e-6)
         @fact gx --> roughly(0.0, 1e-6)
+        @fact cx --> roughly(0.0, 1e-6)
         @fact ef --> 0
-        @fact nf --> less_than(1000)
-    end
-
-    facts("Brownbs") do
-        nlp = CUTEstModel("BROWNBS")
-        x,fx,gx,ef,nf = penalty_method(nlp)
+        @fact num_iter --> less_than(1000)
+        @fact el_time --> less_than(1)
         cutest_finalize(nlp)
-        @fact x --> roughly([1e6;2*1e-6], 1e-3)
-        @fact fx --> roughly(0.0, 1e-6)
-        @fact gx --> roughly(0.0, 1e-6)
-        @fact ef --> 0
-        @fact nf --> less_than(1000)
     end
 
-    facts("Beale") do
-      nlp = CUTEstModel("BEALE")
-      x,fx,gx,ef,nf = penalty_method(nlp)
+    facts("HS7") do
+        nlp = CUTEstModel("HS7")
+        x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
+        cutest_finalize(nlp)
+        @fact x --> roughly([0.0,1.73205], 1e-3)
+        @fact fx --> roughly(-1.73205, 1e-6)
+        @fact gx --> roughly(0.0, 1e-6)
+        @fact cx --> roughly(0.0, 1e-6)
+        @fact ef --> 0
+        @fact num_iter --> less_than(1000)
+        @fact el_time --> less_than(1)
+    end
+
+    facts("HS8") do
+      nlp = CUTEstModel("HS8")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
       cutest_finalize(nlp)
-      @fact x --> roughly([3;0.5], 1e-3)
-      @fact fx --> roughly(0.0, 1e-6)
+      @fact x --> roughly([4.601,1.95], 1e-3)
+      @fact fx --> roughly(-1.0, 1e-6)
       @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
       @fact ef --> 0
-      @fact nf --> less_than(1000)
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
+    end
+
+    facts("BT1") do
+      nlp = CUTEstModel("BT1")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
+      cutest_finalize(nlp)
+      @fact x --> roughly([1.0;0.0], 1e-3)
+      @fact fx --> roughly(-1.0, 1e-6)
+      @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
+      @fact ef --> 0
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
     end
   end
 
-  context("Testes com restrições de igualdade") do
-    facts("HS009") do
-      nlp = CUTEstModel("HS9")
-      x,fx,gx,ef,nf = penalty_method(nlp)
+  context("Problemas médios") do
+    facts("HS79") do
+      nlp = CUTEstModel("HS79")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
       cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(-0.5, 1e-6)
+      @fact x --> roughly([1.19,1.36,1.47,1.67,1.63], 1e-3)
+      @fact fx --> roughly(0.078, 1e-6)
       @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
       @fact ef --> 0
-      @fact nf --> less_than(1000)
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
     end
 
-    facts("HS026") do
-      nlp = CUTEstModel("HS26")
-      x,fx,gx,ef,nf = penalty_method(nlp)
+    facts("BT8") do
+      nlp = CUTEstModel("BT8")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
       cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(0.0, 1e-6)
-      @fact gx --> roughly(0.0, 1e-6)
-      @fact ef --> 0
-      @fact nf --> less_than(1000)
-    end
-
-    facts("HS027") do
-      nlp = CUTEstModel("HS27")
-      x,fx,gx,ef,nf = penalty_method(nlp)
-      cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(0.04, 1e-6)
-      @fact gx --> roughly(0.0, 1e-6)
-      @fact ef --> 0
-      @fact nf --> less_than(1000)
-    end
-  end
-
-  context("Testes com falhas") do
-    facts("HS027") do
-      nlp = CUTEstModel("HS27")
-      x,fx,gx,ef,nf = penalty_method(nlp)
-      cutest_finalize(nlp)
-      @fact x --> roughly(r, 1e-3)
+      @fact x --> roughly([1.0,0.0,0.0,0.0,0.0], 1e-3)
       @fact fx --> roughly(1.0, 1e-6)
       @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
       @fact ef --> 0
-      @fact nf --> less_than(1000)
-    end
-  end
-end
-
-context("Método Filtro") do
-  context("Testes sem restrições") do
-    facts("Rosenbrock") do
-        nlp = CUTEstModel("ROSENBR")
-        x,fx,cx,gx = newton_method_filter(nlp)
-        cutest_finalize(nlp)
-        @fact x --> roughly(ones(2), 1e-3)
-        @fact fx --> roughly(0.0, 1e-6)
-        @fact gx --> roughly(0.0, 1e-6)
-        @fact ef --> 0
-        @fact nf --> less_than(1000)
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
     end
 
-    facts("Brownbs") do
-        nlp = CUTEstModel("BROWNBS")
-        x,fx,gx,ef,nf = newton_method_filter(nlp)
-        cutest_finalize(nlp)
-        @fact x --> roughly([1e6;2*1e-6], 1e-3)
-        @fact fx --> roughly(0.0, 1e-6)
-        @fact gx --> roughly(0.0, 1e-6)
-        @fact ef --> 0
-        @fact nf --> less_than(1000)
-    end
-
-    facts("Beale") do
-      nlp = CUTEstModel("BEALE")
-      x,fx,gx,ef,nf = newton_method_filter(nlp)
+    facts("HS77") do
+      nlp = CUTEstModel("HS77")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
       cutest_finalize(nlp)
-      @fact x --> roughly([3;0.5], 1e-3)
+      @fact x --> roughly([1.16,0.61,1.38,1.50,1.18], 1e-3)
+      @fact fx --> roughly(0.24, 1e-6)
+      @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
+      @fact ef --> 0
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
+    end
+
+    facts("ORTHREGB") do
+      nlp = CUTEstModel("ORTHREGB")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
+      cutest_finalize(nlp)
       @fact fx --> roughly(0.0, 1e-6)
       @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
       @fact ef --> 0
-      @fact nf --> less_than(1000)
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
     end
   end
 
-  context("Testes com restrições de igualdade") do
-    facts("HS009") do
-      nlp = CUTEstModel("HS9")
-      x,fx,gx,ef,nf = newton_method_filter(nlp)
+  context("Problemas que podem falhar") do
+    facts("MARATOS") do
+      nlp = CUTEstModel("MARATOS")
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp)
       cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(-0.5, 1e-6)
+      @fact x --> roughly([1.0,0.0], 1e-3)
+      @fact fx --> roughly(-1.0, 1e-6)
       @fact gx --> roughly(0.0, 1e-6)
+      @fact cx --> roughly(0.0, 1e-6)
       @fact ef --> 0
-      @fact nf --> less_than(1000)
+      @fact num_iter --> less_than(1000)
+      @fact el_time --> less_than(1)
+    end
+    x0 = 10*ones(2)
+    f(x) = x[1]^2 + x[2]^2
+    c(x) = x[1] + x[2] - 1
+    nlp = SimpleNLPModel(f, x0, c=c, lcon=[0.0], ucon=[0.0])
+
+    facts("Limite de Iterações") do
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp,max_iter = 1)
+      @fact ef --> 1
+      @fact num_iter --> 1
     end
 
-    facts("HS026") do
-      nlp = CUTEstModel("HS26")
-      x,fx,gx,ef,nf = newton_method_filter(nlp)
-      cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(0.0, 1e-6)
-      @fact gx --> roughly(0.0, 1e-6)
-      @fact ef --> 0
-      @fact nf --> less_than(1000)
-    end
-
-    facts("HS027") do
-      nlp = CUTEstModel("HS27")
-      x,fx,gx,ef,nf = newton_method_filter(nlp)
-      cutest_finalize(nlp)
-      #@fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(0.04, 1e-6)
-      @fact gx --> roughly(0.0, 1e-6)
-      @fact ef --> 0
-      @fact nf --> less_than(1000)
-    end
-  end
-
-  context("Testes com falhas") do
-    facts("HS027") do
-      nlp = CUTEstModel("HS27")
-      x,fx,gx,ef,nf = newton_method_filter(nlp)
-      cutest_finalize(nlp)
-      @fact x --> roughly(r, 1e-3)
-      @fact fx --> roughly(1.0, 1e-6)
-      @fact gx --> roughly(0.0, 1e-6)
-      @fact ef --> 0
-      @fact nf --> less_than(1000)
+    facts("Limite de Tempo") do
+      x,fx,gx,cx,ef,num_iter,el_time = penalty_method(nlp,max_time = 0)
+      @fact ef --> 2
+      @fact el_time --> greater_than(0)
     end
   end
 end
