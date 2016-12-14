@@ -1,6 +1,6 @@
 using FactCheck, NLPModels, CUTEst, LinearOperators, Krylov
 
-include("Penalidade_reg_conf_caixa.jl")
+include("Penalidade_reg_conf.jl")
 
 context("Método Penalidade\n") do
   context("Problemas pequenos") do

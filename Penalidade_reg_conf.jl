@@ -68,6 +68,7 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
     c(x) = cons(nlp, x)
     ∇f(x) = grad(nlp, x)
     J(x) = jac(nlp, x)
+    H(x,y) = hess_op(nlp, x, y=y)
 
     µ = 10.0
     ω = 1 / µ
@@ -79,7 +80,6 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
 
     g = ∇f(x)
     cx = c(x)
-    cx_ant = cx
     A = J(x)
 
     m = length(cx)
@@ -90,7 +90,8 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
     L_x = g + A' * λ
     L_xλ = g + A' * (µ * cx + λ)
     B = LBFGSOperator(n)
-    M = B + µ * A' * A
+    #M = B + µ * A' * A
+    M = H(x,λ) + µ * A' * A
     ρ = 0
     if verbose
         @printf("%4s  %9s  %9s  %9s  %9s  %9s  %9s  %9s  %9s  %9s\n", "iter","||c(x)||", "λ",
@@ -98,6 +99,7 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
     end
 
     while norm(L_x) > tol || norm(cx) > tol
+      cx_km1 = cx
       while norm(L_xλ) > ω
         d = st_cg(M, L_xλ, Δ)
         ared = ϕx - ϕ(x + d,λ,µ)
@@ -111,24 +113,25 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
             Δ *= σ2
         elseif ρ >= η1
             x = x + d
+            ϕx = ϕ(x,λ,µ)
+            A = J(x)
+            cx = c(x)
+            g_ant = g
+            g = ∇f(x)
+            y = g - g_ant
+            L_xλ = g + A' * (µ * cx + λ)
+            L_x = g + A' * λ
+            #M = push!(B, d, y) + µ * A' * A
+            M = H(x,λ) + µ * A' * A
             if ρ > η2
                 Δ *= σ1
             end
         end
         if abs(Δ) >= 1e50 || abs(Δ) <= 1e-50
           exit_flag = -2
+          println("Δ = $Δ")
           return x, f(x), norm(L_x), norm(cx), exit_flag, iter, elapsed_time
         end
-        ϕx = ϕ(x,λ,µ)
-        A = J(x)
-        cx_ant = cx
-        cx = c(x)
-        g_ant = g
-        g = ∇f(x)
-        y = g - g_ant
-        L_xλ = g + A' * (µ * cx + λ)
-        L_x = g + A' * λ
-        M = push!(B, d, y) + µ * A' * A
 
         if norm(L_x) <= tol && norm(cx) <= tol
 
@@ -139,12 +142,17 @@ function penalty_method(nlp::AbstractNLPModel;tol = 1e-5, max_iter = 1000, max_t
       end
 
       λ += µ * cx
-      if norm(cx,Inf) <= norm(cx_ant,Inf)
-          ω = ω / µ
+      if norm(cx,Inf) <= norm(cx_km1,Inf)
+          ω = max(ω * 0.1, tol)
       else
           µ = min(100 * µ, 1e30)
-          ω = 1 / µ
+          ω = max(1 / µ, tol)
       end
+      ϕx = ϕ(x,λ,µ)
+      L_xλ = g + A' * (µ * cx + λ)
+      L_x = g + A' * λ
+      #M = B + µ * A' * A
+      M = H(x,λ) + µ * A' * A
 
       iter += 1
       if iter >= max_iter
