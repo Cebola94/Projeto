@@ -1,6 +1,6 @@
 using Krylov, OptimizationProblems, CUTEst, LinearOperators, NLPModels
 include("Penalidade_reg_conf_caixa.jl")
-problems = CUTEst.select(max_var=2,max_con=4,only_equ_con=false)
+problems = CUTEst.select(max_var=2,max_con=4,only_equ_con=true,only_bnd_var=true)
 println("Número de problemas:$(length(problems))")
 open("log_penalidade_caixa.txt", "w") do file
     str = @sprintf("%8s  %10s  %10s  %10s  %7s  %7s  %7s  %7s  %7s  %7s  %10s\n","Problema", "f(x)", "||g(x)||", "||c(x)||","iter","ef","nf","ng","nH","nHv","tempo")
